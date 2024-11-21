@@ -1,11 +1,16 @@
 const express = require('express'); // Import Express
-const bodyParser = require('body-parser'); // For webhook parsing
+const bodyParser = require('body-parser'); // Middleware for parsing JSON
 const app = express(); // Initialize Express
 
-app.use(bodyParser.json()); // Middleware to parse incoming webhook JSON
+app.use(bodyParser.json()); // Parse incoming JSON (for webhooks)
 
-// Temporary in-memory store for links (we’ll replace this with a database later if needed)
+// Temporary in-memory store for links
 const links = {};
+
+// Root endpoint to show a welcome message
+app.get('/', (req, res) => {
+    res.send("Welcome to the One-Time Link Generator! Use /generate to create links.");
+});
 
 // Endpoint to generate a unique link
 app.get('/generate', (req, res) => {
@@ -18,15 +23,15 @@ app.get('/generate', (req, res) => {
     }
 
     // Generate a new link
-    const token = Math.random().toString(36).substr(2, 12); // Random unique token
-    const expirationTime = Date.now() + 24 * 60 * 60 * 1000; // Expire in 24 hours
-    const uniqueUrl = `https://yourapp.onrender.com/redirect/${token}`;
+    const token = Math.random().toString(36).substr(2, 12); // Generate random unique token
+    const baseUrl = `${req.protocol}://${req.get('host')}`; // Dynamically detect base URL
+    const uniqueUrl = `${baseUrl}/redirect/${token}`;
 
     // Save the link
     links[userId] = {
         uniqueUrl,
-        hubspotLink: "https://meetings.hubspot.com/joseph626",
-        expirationTime,
+        hubspotLink: "https://meetings.hubspot.com/joseph626", // Your HubSpot meeting scheduler link
+        expirationTime: Date.now() + 24 * 60 * 60 * 1000, // Expire in 24 hours
         used: false,
     };
 
@@ -46,7 +51,7 @@ app.get('/redirect/:token', (req, res) => {
     res.redirect(schedulerUrl);
 });
 
-// Endpoint to handle webhook notifications
+// Webhook endpoint for when meetings are booked
 app.post('/webhook', (req, res) => {
     const data = req.body;
 
